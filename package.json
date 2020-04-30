@@ -1,0 +1,32 @@
+{
+  "name": "@zingle/wash53",
+  "version": "0.0.1",
+  "description": "tools and service to cleanup Route53 records",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/Zingle/wash53.git"
+  },
+  "keywords": [
+    "AWS",
+    "Amazon",
+    "DNS",
+    "Route",
+    "53",
+    "daemon",
+    "purge",
+    "clean"
+  ],
+  "author": "Richard Remer <reanjr@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Zingle/wash53/issues"
+  },
+  "homepage": "https://github.com/Zingle/wash53#readme",
+  "dependencies": {
+    "aws-sdk": "^2.665.0"
+  }
+}

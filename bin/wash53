@@ -1,0 +1,18 @@
+#!/usr/bin/env node
+
+const {Route53} = require("aws-sdk");
+const {Wash53} = require("..");
+const route53 = new Route53();
+const wash53 = new Wash53(route53);
+
+(async () => {
+    for await (const {Id: zone} of wash53.zones()) {
+        console.log(`=== ${zone} ===`);
+        for await (const record of wash53.records(zone)) {
+            const {Name, Type, ResourceRecords} = record;
+            for (const {Value} of record.ResourceRecords) {
+                console.log(Type, Name, Value);
+            }
+        }
+    }
+})().catch(console.error);

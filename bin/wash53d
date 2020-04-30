@@ -1,0 +1,11 @@
+#!/usr/bin/env node
+
+const AWS = require("aws-sdk");
+const wash53 = require("..");
+let terminated = false;
+
+async function daemon() {
+    while (!terminated) {
+        
+    }
+}
