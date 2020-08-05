@@ -1,0 +1,84 @@
+#!/usr/bin/env node
+
+const sdk = require("aws-sdk");
+const {AsyncAWS} = require("..");
+const wash53 = new AsyncAWS(sdk);
+
+if (!process.env.DEBUG) {
+    console.debug = () => {};
+}
+
+(async () => {
+    const ips = new Set();
+    const records = {A: new Map(), AAAA: new Map(), CNAME: new Map()};
+
+    console.debug("fetching instances");
+
+    for await (const region of wash53.regions()) {
+        console.debug(`fetching instances in ${region}`);
+
+        for await (const instance of wash53.instances(region)) {
+            const tags = AsyncAWS.readTags(instance);
+            const ident = tags.Name || instance.InstanceId;
+            const addrs = [];
+
+            if (instance.PublicIpAddress) addrs.push(instance.PublicIpAddress);
+            if (instance.PrivateIpAddress) addrs.push(instance.PrivateIpAddress);
+
+            for (const {Ipv6Addresses} of instance.NetworkInterfaces) {
+                for (const {Ipv6Address} of Ipv6Addresses) {
+                    ips.add(Ipv6Address);
+                }
+            }
+
+            for (const addr of addrs) {
+                console.debug(" ", addr, "attached to", ident);
+                ips.add(addr);
+            }
+        }
+    }
+
+    console.debug("fetching DNS records");
+
+    for await (const {Id: zone} of wash53.zones()) {
+        console.debug(`fetching DNS records from ${zone}`);
+
+        for await (const record of wash53.records(zone)) {
+            const {Name, Type, ResourceRecords} = record;
+
+            if (!records[Type]) {
+                continue;
+            }
+
+            for (const {Value} of record.ResourceRecords) {
+                console.debug(" ", Type, Name, Value);
+
+                if (!records[Type].has(Name)) {
+                    records[Type].set(Name, new Set());
+                }
+
+                records[Type].get(Name).add(Value);
+            }
+        }
+    }
+
+    console.debug("auditing DNS A records");
+
+    for (const [name, values] of records.A.entries()) {
+        for (const value of values) {
+            if (!ips.has(value)) {
+                console.log("DELETE A", name, value);
+            }
+        }
+    }
+
+    console.debug("auditing DNS AAAA records");
+
+    for (const [name, values] of records.AAAA.entries()) {
+        for (const value of values) {
+            if (!ips.has(value)) {
+                console.log("DELETE AAAA", name, value);
+            }
+        }
+    }
+})().catch(console.error);

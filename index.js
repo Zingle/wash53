@@ -1,2 +1,3 @@
-const {Wash53} = require("./lib/wash53");
-module.exports = {Wash53};
+const {AsyncAWS} = require("./lib/async-aws");
+
+module.exports = {AsyncAWS};
