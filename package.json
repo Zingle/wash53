@@ -27,6 +27,7 @@
   },
   "homepage": "https://github.com/Zingle/wash53#readme",
   "dependencies": {
-    "aws-sdk": "^2.665.0"
+    "aws-sdk": "^2.665.0",
+    "node-getopt": "^0.3.2"
   }
 }

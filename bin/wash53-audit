@@ -1,20 +1,41 @@
 #!/usr/bin/env node
 
+const getopt = require("node-getopt");
 const sdk = require("aws-sdk");
 const {AsyncAWS} = require("..");
 const wash53 = new AsyncAWS(sdk);
 
-if (!process.env.DEBUG) {
+const helptpl = `
+Usage: wash53-audit [OPTION]
+Audit Route53 for unused records.
+
+[[OPTIONS]]`.trim() + "\n";
+
+const cli = [
+    ["h",   "help",     "display this help"],
+    ["R",   "region=",  "match DNS records for one region"],
+    ["v",   "verbose",  "write more info to terminal"],
+    ["Z",   "zone=",    "audit specified Route53 zone"]
+];
+
+const {options} = getopt.create(cli).setHelp(helptpl).bindHelp().parseSystem();
+
+if (!options.verbose) {
     console.debug = () => {};
 }
 
 (async () => {
     const ips = new Set();
+    const domains = new Set();
     const records = {A: new Map(), AAAA: new Map(), CNAME: new Map()};
 
     console.debug("fetching instances");
 
     for await (const region of wash53.regions()) {
+        if (options.region && options.region !== region) {
+            continue;
+        }
+
         console.debug(`fetching instances in ${region}`);
 
         for await (const instance of wash53.instances(region)) {
@@ -40,8 +61,14 @@ if (!process.env.DEBUG) {
 
     console.debug("fetching DNS records");
 
-    for await (const {Id: zone} of wash53.zones()) {
+    for await (const {Id: zone, Name: domain} of wash53.zones()) {
+        if (options.zone && options.zone !== zone) {
+            continue;
+        }
+
         console.debug(`fetching DNS records from ${zone}`);
+
+        domains.add(domain);
 
         for await (const record of wash53.records(zone)) {
             const {Name, Type, ResourceRecords} = record;
@@ -66,7 +93,7 @@ if (!process.env.DEBUG) {
 
     for (const [name, values] of records.A.entries()) {
         for (const value of values) {
-            if (!ips.has(value)) {
+            if (!ips.has(value) && !domains.has(name)) {
                 console.log("DELETE A", name, value);
             }
         }
@@ -76,7 +103,7 @@ if (!process.env.DEBUG) {
 
     for (const [name, values] of records.AAAA.entries()) {
         for (const value of values) {
-            if (!ips.has(value)) {
+            if (!ips.has(value) && !domains.has(name)) {
                 console.log("DELETE AAAA", name, value);
             }
         }
