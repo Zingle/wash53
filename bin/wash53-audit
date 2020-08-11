@@ -13,30 +13,30 @@ Audit Route53 for unused records.
 
 const cli = [
     ["h",   "help",     "display this help"],
-    ["R",   "region=",  "match DNS records for one region"],
-    ["v",   "verbose",  "write more info to terminal"],
-    ["Z",   "zone=",    "audit specified Route53 zone"]
+    ["R",   "region=+", "match DNS records for one region"],
+    ["v",   "verbose+", "write more info to terminal"],
+    ["Z",   "zone=+",   "audit specified Route53 zone"]
 ];
 
 const {options} = getopt.create(cli).setHelp(helptpl).bindHelp().parseSystem();
 
-if (!options.verbose) {
-    console.debug = () => {};
-}
+if (!options.verbose || options.verbose.length < 2) console.debug = () => {};
+if (!options.verbose) console.info = () => {};
 
 (async () => {
     const ips = new Set();
     const domains = new Set();
+    const hosts = new Set();
     const records = {A: new Map(), AAAA: new Map(), CNAME: new Map()};
 
     console.debug("fetching instances");
 
     for await (const region of wash53.regions()) {
-        if (options.region && options.region !== region) {
+        if (options.region && !options.region.includes(region)) {
             continue;
         }
 
-        console.debug(`fetching instances in ${region}`);
+        console.info(`fetching instances in ${region}`);
 
         for await (const instance of wash53.instances(region)) {
             const tags = AsyncAWS.readTags(instance);
@@ -62,11 +62,11 @@ if (!options.verbose) {
     console.debug("fetching DNS records");
 
     for await (const {Id: zone, Name: domain} of wash53.zones()) {
-        if (options.zone && options.zone !== zone) {
+        if (options.zone && !options.zone.includes(zone)) {
             continue;
         }
 
-        console.debug(`fetching DNS records from ${zone}`);
+        console.info(`fetching DNS records from ${zone}`);
 
         domains.add(domain);
 
@@ -89,22 +89,36 @@ if (!options.verbose) {
         }
     }
 
-    console.debug("auditing DNS A records");
+    console.info("auditing DNS A records");
 
     for (const [name, values] of records.A.entries()) {
         for (const value of values) {
             if (!ips.has(value) && !domains.has(name)) {
                 console.log("DELETE A", name, value);
+            } else {
+                hosts.add(name);
             }
         }
     }
 
-    console.debug("auditing DNS AAAA records");
+    console.info("auditing DNS AAAA records");
 
     for (const [name, values] of records.AAAA.entries()) {
         for (const value of values) {
             if (!ips.has(value) && !domains.has(name)) {
                 console.log("DELETE AAAA", name, value);
+            } else {
+                hosts.add(name);
+            }
+        }
+    }
+
+    console.info("auditing DNS CNAME records");
+
+    for (const [name, values] of records.CNAME.entries()) {
+        for (const value of values) {
+            if (!hosts.has(value)) {
+                console.log("DELETE CNAME", name, value);
             }
         }
     }
