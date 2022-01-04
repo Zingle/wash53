@@ -1,6 +1,6 @@
 {
   "name": "@zingle/wash53",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "tools and service to cleanup Route53 records",
   "main": "index.js",
   "scripts": {
@@ -27,8 +27,8 @@
   },
   "homepage": "https://github.com/Zingle/wash53#readme",
   "dependencies": {
-    "aws-sdk": "^2.665.0",
-    "node-fetch": "^2.6.0",
+    "aws-sdk": "^2.1049.0",
+    "node-fetch": "^3.1.0",
     "node-getopt": "^0.3.2"
   }
 }
